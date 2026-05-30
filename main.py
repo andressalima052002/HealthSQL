@@ -1,39 +1,44 @@
-# main.py
-import configparser
-from agent.extractor import Extractor
-from ai.analyzer import AIAnalyzer
+import logging
+from datetime import datetime
+
+from apscheduler.schedulers.blocking import BlockingScheduler
+
+from core.config import carregar_config
+from core.logger import setup_logging
+from core.scheduler import rodar_health_check
+
 
 def main():
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-
-    # --- Etapa 1: Extração de Dados ---
     try:
-        sql_config = config['SQL_SERVER']
-        extractor = Extractor(
-            server=sql_config['SERVER'],
-            database=sql_config['DATABASE'],
-            username=sql_config['USERNAME'],
-            password=sql_config['PASSWORD']
-        )
-        extractor.connect()
-        health_data = extractor.extract_all_data()
-        extractor.save_data_to_json(health_data)
-        extractor.close()
+        config = carregar_config()
     except Exception as e:
-        print(f"Falha na etapa de extração de dados: {e}")
+        print(f"Erro ao carregar config.ini: {e}")
         return
 
-    # --- Etapa 2: Análise com IA ---
-    try:
-        ai_config = config['GEMINI_API']
-        analyzer = AIAnalyzer(api_key=ai_config['API_KEY'])
-        analysis_result = analyzer.analyze_health_report()
+    setup_logging(nivel=config.nivel_log, diretorio="logs")
+    logger = logging.getLogger(__name__)
 
-        print("\n--- RELATÓRIO DE SAÚDE DO BANCO DE DADOS ---\n")
-        print(analysis_result)
-    except Exception as e:
-        print(f"Falha na etapa de análise com IA: {e}")
+    logger.info(
+        "HealthSQL iniciado | %d instância(s) configurada(s) | intervalo: %d min",
+        len(config.instancias), config.intervalo_minutos,
+    )
+
+    scheduler = BlockingScheduler()
+    scheduler.add_job(
+        rodar_health_check,
+        trigger="interval",
+        minutes=config.intervalo_minutos,
+        args=[config],
+        next_run_time=datetime.now(),
+        max_instances=1,
+        coalesce=True,
+    )
+
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("Encerrando HealthSQL...")
+
 
 if __name__ == "__main__":
     main()

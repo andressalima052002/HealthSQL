@@ -1,5 +1,3 @@
-# agent/queries.py
-
 DATABASE_STATUS = "SELECT name, state_desc FROM sys.databases;"
 
 BACKUP_STATUS = """
@@ -19,11 +17,6 @@ LEFT JOIN (
 ORDER BY d.name;
 """
 
-# A análise de erros de backup pode ser complexa.
-# Uma abordagem inicial é verificar se backups recentes existem.
-# Outra é consultar o SQL Server Error Log, que é mais avançado.
-# Por simplicidade, vamos focar no status do último backup.
-
 ACTIVE_LOCKS = """
 SELECT
     tl.resource_type,
@@ -40,22 +33,6 @@ JOIN sys.dm_exec_sessions AS es ON tl.request_session_id = es.session_id
 WHERE tl.request_session_id <> @@SPID;
 """
 
-FRAGMENTED_INDEXES = """
-SELECT
-    dbs.name AS database_name,
-    s.name AS schema_name,
-    t.name AS table_name,
-    i.name AS index_name,
-    ips.avg_fragmentation_in_percent
-FROM sys.dm_db_index_physical_stats (DB_ID(), NULL, NULL, NULL, 'SAMPLED') AS ips
-JOIN sys.indexes AS i ON ips.object_id = i.object_id AND ips.index_id = i.index_id
-JOIN sys.tables t ON i.object_id = t.object_id
-JOIN sys.schemas s ON t.schema_id = s.schema_id
-JOIN sys.databases dbs ON dbs.database_id = DB_ID()
-WHERE ips.avg_fragmentation_in_percent > 30.0 AND i.name IS NOT NULL
-ORDER BY ips.avg_fragmentation_in_percent DESC;
-"""
-
 SLOW_QUERIES = """
 SELECT TOP 10
     qs.total_elapsed_time / qs.execution_count / 1000 AS avg_elapsed_time_ms,
@@ -68,4 +45,28 @@ SELECT TOP 10
 FROM sys.dm_exec_query_stats AS qs
 CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS st
 ORDER BY avg_elapsed_time_ms DESC;
+"""
+
+DATABASES_PARA_ESCANEAR = """
+SELECT name
+FROM sys.databases
+WHERE state_desc = 'ONLINE'
+  AND database_id > 4
+  AND name NOT IN ('distribution', 'ReportServer', 'ReportServerTempDB')
+ORDER BY name;
+"""
+
+FRAGMENTED_INDEXES_LOCAL = """
+SELECT
+    s.name AS schema_name,
+    t.name AS table_name,
+    i.name AS index_name,
+    ips.avg_fragmentation_in_percent
+FROM sys.dm_db_index_physical_stats(DB_ID(), NULL, NULL, NULL, 'SAMPLED') AS ips
+JOIN sys.indexes AS i ON ips.object_id = i.object_id AND ips.index_id = i.index_id
+JOIN sys.tables t ON i.object_id = t.object_id
+JOIN sys.schemas s ON t.schema_id = s.schema_id
+WHERE ips.avg_fragmentation_in_percent > 30.0
+  AND i.name IS NOT NULL
+ORDER BY ips.avg_fragmentation_in_percent DESC;
 """

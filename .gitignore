@@ -1,0 +1,9 @@
+config.ini
+reports/
+logs/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store

@@ -1,0 +1,33 @@
+[GLOBAL]
+# Intervalo entre execuções do health-check (em minutos)
+intervalo_minutos = 60
+# Diretório de saída dos relatórios (relativo à raiz do projeto)
+diretorio_relatorios = reports
+# Nível de log: DEBUG, INFO, WARNING, ERROR
+nivel_log = INFO
+
+[OLLAMA]
+# Endereço do Ollama local (default: http://localhost:11434)
+host = http://localhost:11434
+# Modelo carregado no Ollama (rodar antes: ollama pull mistral:7b)
+modelo = mistral:7b
+# Timeout em segundos para a chamada do modelo (análises podem ser demoradas)
+timeout = 300
+
+# Cada seção com prefixo "SQL_SERVER:" é uma instância monitorada.
+# O texto após os dois-pontos vira o "apelido" usado em pastas/logs.
+# Adicione quantas instâncias quiser.
+
+[SQL_SERVER:dev_local]
+server = localhost\SQLEXPRESS
+database = master
+username = sa
+password = sua_senha
+# Opcional — default é "ODBC Driver 17 for SQL Server"
+driver = ODBC Driver 17 for SQL Server
+
+# [SQL_SERVER:producao]
+# server = srv-sql-prod-01
+# database = master
+# username = monitor_user
+# password = sua_senha
